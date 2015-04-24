@@ -64,7 +64,7 @@ const unsigned char EAN13_LEFT_HAND_ENCODING_RULES[10]={63,52,50,49,44,38,35,42,
 //};
 
 char EAN13_Get_Check_Sum(const char *barcode);
-int EAN13_Fill_Buf(const char *barcode, unsigned char *buf, unsigned int len, unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
+int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len, unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
 
 
 

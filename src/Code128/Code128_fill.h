@@ -131,25 +131,46 @@ const Code128_Map CODE128_ENCODING[CODE128_ENCODING_LENGTH] = {
 		{106,    0, "Stop",       0, "Stop",      0, "Stop",     "2331112"}
 };
 
+#define CODE128_MINI_BAR_WIDTH_IN	0.0065	//能被识别的最小列宽度，单位英寸
+#define CODE128_MINI_BAR_HEIGHT_IN 0.12	//最小高度
 
+/*
+ * 根据ASCII取特定编码下对应字符的编码
+ */
 const char* Code128A_Get_Code(char c);
 const char* Code128B_Get_Code(char c);
 const char* Code128C_Get_Code(char *str);
 
+/**
+ * 根据ASCII取特定编码下对应字符的编码索引
+ */
 char Code128A_Get_Idx(char c);
 char Code128B_Get_Idx(char c);
 char Code128C_Get_Idx(char *str);
 
-int Code128_Fill_Char(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen, const char *code, int codeLen,
-		int &xIdx, int thickness, int h, BarCode_BMRGBQuad_Type &barRGB);
-
-//char Code128B_Get_Check_Sum(char c);
+/**
+ * 根据ASCII推断编码类型，优先当前类型
+ */
 char Code128_Get_Char_Type(char c, char currentType);
-int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, int &codeLen, int &checkSum, char defaultType);
 
+//int Code128_Fill_Char(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen, const char *code, int codeLen,
+//		int &xIdx, int thickness, int h, BarCode_BMRGBQuad_Type &barRGB);
+//int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, int &codeLen, int &checkSum, char defaultType);
+
+/**
+ * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
+ */
 int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
+/**
+ * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ */
 int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
+/**
+ * 指定生成的BMP图像的打印分辨率（宽度和高度自动以最小可识别单位计算），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ */
+int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
 
 #endif /* CODE128_CODE128_FILL_H_ */

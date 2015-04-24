@@ -15,19 +15,30 @@
 	#define BARCODE_BMP_TYPE (unsigned short) 0X424D
 #endif
 
-#define BARCODE_BMP_BIT_COUNT 32
-#define BARCODE_BMP_BYTE_COUNT BARCODE_BMP_BIT_COUNT/8
-
-//#ifndef BARCODE_BMP_MAX_HEIGHT
-//	#define BARCODE_BMP_MAX_HEIGHT 4096
-//#endif
-//#ifndef BARCODE_BMP_MAX_WIDTH
-//	#define BARCODE_BMP_MAX_WIDTH  4096
-//#endif
 
 #define BARCODE_BMP_FILE_HEADER_LENGTH 14
 #define BARCODE_BMP_INFORMATION_HEADER_LENGTH 40
-//unsigned char BARCODE_BMP_DATA_BUFF[BARCODE_BMP_FILE_HEADER_LENGTH+BARCODE_BMP_INFORMATION_HEADER_LENGTH+BARCODE_BMP_MAX_HEIGHT*BARCODE_BMP_MAX_WIDTH*3+1];
+
+//排序为 蓝 绿 红
+typedef struct BARCODE_BMPRGBQUAD_TYPEDEF {
+	unsigned char b;			//蓝，范围 0-255
+	unsigned char g;			//绿，范围 0-255
+	unsigned char	r;			//红，范围 0-255
+	unsigned char a;			//透明度
+} BarCode_BMPRGBQuad_Type;
+extern BarCode_BMPRGBQuad_Type BARCODE_BMP_COLOR_TABLE_1[2];
+
+//颜色索引
+typedef struct BARCODE_BMCOLOR_IDX_TYPEDEF {
+	unsigned short i;
+	unsigned short reserved;
+} BarCode_BMPColor_Idx_Type;
+//颜色
+typedef union BARCODE_BMPCOLOR_TYPEDEF {
+	BarCode_BMPRGBQuad_Type rgb;
+	BarCode_BMPColor_Idx_Type idx;
+} BarCode_BMPColor_Type;
+
 
 //位图文件头 bitmap file header(14 byte)
 //BMP文件头数据结构含有BMP文件的类型、文件大小和位图起始位置等信息
@@ -58,37 +69,87 @@ typedef struct BARCODE_BMPIH_TYPEDEF {
 typedef struct BARCODE_BMPHEAD_TYPEDEF {
 	BarCode_BMPFH_Type fh;
 	BarCode_BMPIH_Type ih;
-
-	unsigned int	 curPadNum;//每行补充字节数
-	unsigned int	 alignedWidth;//对宽进行4字节对齐后的实际宽度
-	unsigned int	 fillPadNum;//
+	BarCode_BMPRGBQuad_Type *ct;			//颜色表
+	unsigned short ctCount;			//颜色表项数
+	unsigned int	widthBypes;			//位图每行的实际存储所需的字节数，以字节为单位
 } BarCode_BMPHead_Type;
 
 //颜色表 bitmap color table(不定长)
 //颜色表用于说明位图中的颜色，它有若干个表项，每一个表项是一个RGBQUAD类型的结构，定义一种颜色。
 //颜色表中 BMRGBQUAD 结构数据的个数由 BMIH biBitCount来确定:  当biBitCount=1,4,8时，分别有2,16,256个表项;  当biBitCount=24时，没有颜色表项。
-typedef struct BARCODE_BMRGBQUAD_TYPEDEF {
-	unsigned char	rgbRed;				//红，范围 0-255
-	unsigned char rgbGreen;			//绿，范围 0-255
-	unsigned char rgbBlue;				//蓝，范围 0-255
-	unsigned char rgbReserved;			//保留，必需为0
-} BarCode_BMRGBQuad_Type;
+//排序为 蓝 绿 红 0
 
 //位图数据：位图数据记录了位图的每一个像素值，记录顺序是在扫描行内是从左到右,扫描行之间是从下到上。
 //位图的一个像素值所占的字节数:  当biBitCount=1时，8个像素占1个字节; 当biBitCount=4时，2个像素占1个字节; 
 //							   当biBitCount=8时，1个像素占1个字节; 当biBitCount=24时,1个像素占3个字节;
 
-int BarCode_BMP_Build_Normal_Head(BarCode_BMPHead_Type *head, unsigned int& w, unsigned int h);
-int BarCode_BMP_Mem_Write_Head(BarCode_BMPHead_Type *head, unsigned char *buf, unsigned int len);
 
-int BarCode_BMP_Mem_Wrire_BK_Color(BarCode_BMPHead_Type &head, unsigned char *buf, BarCode_BMRGBQuad_Type &rgb);
-int BarCode_BMP_Mem_Wrire_Pixel(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int x, unsigned int y, BarCode_BMRGBQuad_Type &rgb);
+
+
+/*
+ * 根据位图的像素宽度和每行像素数，计算每行实际存储所需的字节数
+ */
+unsigned int BarCode_BMP_Get_Width_Bypes(unsigned int pixelsCount, unsigned short bitCount);
+
+
+/*
+ * 根据位图的像素宽和像素高、每像素位数
+ * 如果每像素位数为1，4，8，需提供颜色表，颜色表的长度满足: len(colorTable) ＝ pow(2,bitCount)
+ */
+int BarCode_BMP_Build_Head(BarCode_BMPHead_Type &head,
+		unsigned int w, unsigned int h, unsigned short bitCount, BarCode_BMPRGBQuad_Type *colorTable);
+
+/*
+ * 将BMP相关描述信息写入指定buf
+ */
+int BarCode_BMP_Mem_Write_Head(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen);
+
+/*
+ * 填充背景色
+ */
+int BarCode_BMP_Mem_Wrire_BK_Color(BarCode_BMPHead_Type &head, unsigned char *buf, BarCode_BMPColor_Type &bgColor);
+
+/*
+ * 方便初始化位图
+ */
+int BarCode_BMP_Mem_Write_Default(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen,
+		unsigned int& w, unsigned int& h, unsigned short bitCount, BarCode_BMPRGBQuad_Type *colorTable,
+		BarCode_BMPColor_Type &bgColor);
+
+/*
+ * 画一个像素
+ */
+int BarCode_BMP_Mem_Wrire_Pixel(BarCode_BMPHead_Type &head, unsigned char *buf,
+		unsigned int x, unsigned int y, BarCode_BMPColor_Type &color);
+
+/*
+ * 画一个矩形
+ */
+//int BarCode_BMP_Mem_Fill_Rect(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int x, unsigned int y,
+//		unsigned int w, unsigned int h, BarCode_BMPColor_Type &color);
 int BarCode_BMP_Mem_Fill_Rect(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int x, unsigned int y,
-		unsigned int w, unsigned int h, BarCode_BMRGBQuad_Type &rgb);
+		unsigned int w, unsigned int h, BarCode_BMPColor_Type &color);
 
-void BarCode_BMP_Mem_Write_uInt(unsigned char **buf, unsigned int d);
-void BarCode_BMP_Mem_Write_uShort(unsigned char **buf, unsigned short d);
 
+
+
+
+//
+////位图数据：位图数据记录了位图的每一个像素值，记录顺序是在扫描行内是从左到右,扫描行之间是从下到上。
+////位图的一个像素值所占的字节数:  当biBitCount=1时，8个像素占1个字节; 当biBitCount=4时，2个像素占1个字节; 
+////							   当biBitCount=8时，1个像素占1个字节; 当biBitCount=24时,1个像素占3个字节;
+//
+//int BarCode_BMP_Build_Normal_Head(BarCode_BMPHead_Type *head, unsigned int& w, unsigned int h);
+//int BarCode_BMP_Mem_Write_Head(BarCode_BMPHead_Type *head, unsigned char *buf, unsigned int len);
+//int BarCode_BMP_Mem_Set_Default(BarCode_BMPHead_Type *head, unsigned char *buf, unsigned int bufLen,
+//		unsigned int& w, unsigned int& h, unsigned int& bmpLen,
+//		BarCode_BMRGBQuad_Type &bgRGB, BarCode_BMRGBQuad_Type &barRGB, bool isColorExchange);
+//
+//int BarCode_BMP_Mem_Wrire_BK_Color(BarCode_BMPHead_Type &head, unsigned char *buf, BarCode_BMRGBQuad_Type &rgb);
+//int BarCode_BMP_Mem_Wrire_Pixel(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int x, unsigned int y, BarCode_BMRGBQuad_Type &rgb);
+//int BarCode_BMP_Mem_Fill_Rect(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int x, unsigned int y,
+//		unsigned int w, unsigned int h, BarCode_BMRGBQuad_Type &rgb);
+//
 //unsigned int BarCode_BMP_Get_4_Align_Width(unsigned int width);
 
 

@@ -10,7 +10,30 @@
 #include <string.h>
 #include "Code128_fill.h"
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////// --------- 内部函数申明 ---------- /////////////////////////////////////////////////////////////////////////////
 
+/**
+ * 根据确定的编码填充buf，条空相间
+ */
+int Code128_Fill_Char(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen, const char *code, int codeLen,
+		int &xIdx, int thickness, int h, BarCode_BMPColor_Type &barRGB);
+/**
+ * 将ASCII字符串智能的解析成CODE128编码字符串转码
+ */
+int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, int &codeLen, int &checkSum, char defaultType);
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////// --------- 外部函数实现 ---------- /////////////////////////////////////////////////////////////////////////////
+
+/*
+ * 根据ASCII取特定编码下对应字符的编码
+ */
 const char* Code128A_Get_Code(char c) {
 	if(c>95 || c<0) return NULL;
 	if(c>=32) {
@@ -20,12 +43,10 @@ const char* Code128A_Get_Code(char c) {
 		return CODE128_ENCODING[c+64].encoding;
 	}
 }
-
 const char* Code128B_Get_Code(char c) {
 	if(c>127 || c<32) return NULL;
 	return CODE128_ENCODING[c-32].encoding;
 }
-
 const char* Code128C_Get_Code(char *str) {
 	if(str==NULL) return NULL;
 	if(str[0]<48 || str[0]>57) return NULL;
@@ -33,6 +54,9 @@ const char* Code128C_Get_Code(char *str) {
 	return CODE128_ENCODING[(str[0]-48)*10+str[1]-48].encoding;
 }
 
+/**
+ * 根据ASCII取特定编码下对应字符的编码索引
+ */
 char Code128A_Get_Idx(char c) {
 	if(c>=32) {
 		return c-32;
@@ -48,45 +72,42 @@ char Code128C_Get_Idx(char *str) {
 	return (str[0]-48)*10+str[1]-48;
 }
 
-int Code128_Fill_Char(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen, const char *code, int codeLen,
-		int &xIdx, int thickness, int h, BarCode_BMRGBQuad_Type &barRGB) {
-	char count = 0;
-	for(int i=0; i<codeLen; i++) {
-		count = code[i]-48;
-		if((i&1)==0) {
-			BarCode_BMP_Mem_Fill_Rect(head, buf, xIdx, 0, thickness*count, h, barRGB);
-		}
-		xIdx += thickness*count;
-	}
-	return 0;
+/**
+ * 根据ASCII推断编码类型，优先当前类型
+ */
+char Code128_Get_Char_Type(char c, char currentType) {
+	if(c<32) return 'A';
+	if(96<=c && c<=127) return 'B';
+	if(48<=c && c<=57) return 'C';
+	//当之前的类型为C，现类型不为C时，默认返回A
+	if(currentType=='C') return 'A';
+	return currentType;
 }
 
+/**
+ * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
+ */
 int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
-	//设置BMP文件头信息
-	BarCode_BMPHead_Type head;
-	int ret = BarCode_BMP_Build_Normal_Head(&head, w, h);
-	if(ret!=0) return 1;
 	//计算X轴基本间隙长度，整个条码一共有 10 + 11 + barcodeLen*11 + 11 + 13 + 10
 	unsigned int miniWidth = 10 + 11 + barcodeLen*11 + 11 + 13 + 10;
 	printf("miniWidth:%d\n", miniWidth);
 	if(w<miniWidth) return 2;
 	int thickness = w/miniWidth;			//基本条的宽度
-	//写入BMP头信息
-	ret = BarCode_BMP_Mem_Write_Head(&head, buf, bufLen);
+	//设置BMP文件头信息
+	BarCode_BMPHead_Type head;
+	//背景色与线条色
+	BarCode_BMPColor_Type bgRGB, barRGB;
+	if(isColorExchange) {
+		bgRGB.idx.i = 1;
+		barRGB.idx.i = 0;
+	} else {
+		bgRGB.idx.i = 0;
+		barRGB.idx.i = 1;
+	}
+	int ret = BarCode_BMP_Mem_Write_Default(head, buf, bufLen, w, h, 1, BARCODE_BMP_COLOR_TABLE_1, bgRGB);
 	if(ret!=0) return 1;
 	bmpLen = head.fh.bfSize;
-	//背景色与线条色
-	BarCode_BMRGBQuad_Type bgRGB;
-	BarCode_BMRGBQuad_Type barRGB;
-	if(isColorExchange) {
-		barRGB.rgbRed = barRGB.rgbGreen = barRGB.rgbBlue = 0xFF;
-		bgRGB.rgbRed = bgRGB.rgbGreen = bgRGB.rgbBlue = 0;
-	} else {
-		bgRGB.rgbRed = bgRGB.rgbGreen = bgRGB.rgbBlue =  0xFF;
-		barRGB.rgbRed = barRGB.rgbGreen = barRGB.rgbBlue = 0;
-	}
-	ret = BarCode_BMP_Mem_Wrire_BK_Color(head, buf, bgRGB);
 	//生成code128 B 编码
 	unsigned int j = 0;
 	unsigned int checkSum = 0;
@@ -100,24 +121,127 @@ int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned cha
 	for(j=0; j<barcodeLen; ) {
 		Code128_Fill_Char(head, buf, bufLen, Code128B_Get_Code(barcode[j]), 6, xIdx, thickness, h, barRGB);
 		checkSum += (barcode[j]-32)*(++j);
-//		printf("%d\n", checkSum);
 	}
 	checkSum %= 103;
-//	printf("%d\n", checkSum);
 	Code128_Fill_Char(head, buf, bufLen, CODE128_ENCODING[checkSum].encoding,  6, xIdx,thickness, h, barRGB);
 	Code128_Fill_Char(head, buf, bufLen, CODE128_ENCODING[106].encoding,  7, xIdx,thickness, h, barRGB);
 	return 0;
 }
 
-char Code128_Get_Char_Type(char c, char currentType) {
-	if(c<32) return 'A';
-	if(96<=c && c<=127) return 'B';
-	if(48<=c && c<=57) return 'C';
-	//当之前的类型为C，现类型不为C时，默认返回A
-	if(currentType=='C') return 'A';
-	return currentType;
+
+
+
+/**
+ * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ */
+int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
+	//解析条码
+	char codeStr[2048];
+	int codeStrLen = 0;
+	int codeLen = 0;
+	int checkSum = 0;
+	int ret = Code128_Parse(barcode, barcodeLen, codeStr, codeStrLen, codeLen, checkSum, 'B');
+	if(ret!=0) return ret;
+	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
+	//计算需要最小的位图宽象素数
+	unsigned int miniWidth = 10 + (codeLen-1)*11 + 13 + 10;
+	printf("miniWidth:%d\n", miniWidth);
+	if(w<miniWidth) return 2;
+	int thickness = w/miniWidth;			//基本条的宽度
+	//设置BMP文件头信息
+	BarCode_BMPHead_Type head;
+	//背景色与线条色
+	BarCode_BMPColor_Type bgRGB, barRGB;
+	if(isColorExchange) {
+		bgRGB.idx.i = 1;
+		barRGB.idx.i = 0;
+	} else {
+		bgRGB.idx.i = 0;
+		barRGB.idx.i = 1;
+	}
+	ret = BarCode_BMP_Mem_Write_Default(head, buf, bufLen, w, h, 1, BARCODE_BMP_COLOR_TABLE_1, bgRGB);
+	if(ret!=0) return 1;
+	bmpLen = head.fh.bfSize;
+//	ret = BarCode_BMP_Mem_Set_Default(&head, buf, bufLen, w, h, bmpLen, bgRGB, barRGB, isColorExchange);
+//	if(ret!=0) return 1;
+	//定义起始的条X坐标
+	int xIdx = thickness * 10;
+	Code128_Fill_Char(head, buf, bufLen, codeStr, codeLen*6 + 1, xIdx,thickness, h, barRGB);
+	return 0;
 }
 
+
+
+int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
+	//解析条码
+	int ret;
+	char codeStr[2048];
+	int codeStrLen = 0;
+	int codeLen = 0;
+	int checkSum = 0;
+	ret = Code128_Parse(barcode, barcodeLen, codeStr, codeStrLen, codeLen, checkSum, 'B');
+	if(ret!=0) return ret;
+	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
+	//计算需要最小的位图宽象素数
+	unsigned int miniWidth = 10 + (codeLen-1)*11 + 13 + 10;
+	printf("miniWidth:%d\n", miniWidth);
+	double wTemp = CODE128_MINI_BAR_WIDTH_IN*dpi;
+	w = (int)wTemp;
+	if((wTemp-w)>0) w++;	//最小条的宽度必需进位，不能四舍五入
+	w = w * miniWidth;
+	h = CODE128_MINI_BAR_HEIGHT_IN*dpi;
+	printf("width:%d; height:%d\n", w, h);
+	int thickness = w/miniWidth;			//基本条的宽度
+	//设置BMP文件头信息
+	BarCode_BMPHead_Type head;
+	//背景色与线条色
+	BarCode_BMPColor_Type bgRGB, barRGB;
+	if(isColorExchange) {
+		bgRGB.idx.i = 1;
+		barRGB.idx.i = 0;
+	} else {
+		bgRGB.idx.i = 0;
+		barRGB.idx.i = 1;
+	}
+	ret = BarCode_BMP_Mem_Write_Default(head, buf, bufLen, w, h, 1, BARCODE_BMP_COLOR_TABLE_1, bgRGB);
+	if(ret!=0) return 1;
+	bmpLen = head.fh.bfSize;
+//	BarCode_BMRGBQuad_Type bgRGB, barRGB;
+//	ret = BarCode_BMP_Mem_Set_Default(&head, buf, bufLen, w, h, bmpLen, bgRGB, barRGB, isColorExchange);
+//	if(ret!=0) return 1;
+	//定义起始的条X坐标
+	int xIdx = thickness * 10;
+	Code128_Fill_Char(head, buf, bufLen, codeStr, codeLen*6 + 1, xIdx,thickness, h, barRGB);
+	return 0;
+}
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////// --------- 辅助函数 ---------- /////////////////////////////////////////////////////////////////////////////////
+/**
+ * 根据确定的编码填充buf，条空相间
+ */
+int Code128_Fill_Char(BarCode_BMPHead_Type &head, unsigned char *buf, unsigned int bufLen, const char *code, int codeLen,
+		int &xIdx, int thickness, int h, BarCode_BMPColor_Type &barRGB) {
+	char count = 0;
+	for(int i=0; i<codeLen; i++) {
+		count = code[i]-48;
+		if((i&1)==0) {
+			BarCode_BMP_Mem_Fill_Rect(head, buf, xIdx, 0, thickness*count, h, barRGB);
+		}
+		xIdx += thickness*count;
+	}
+	return 0;
+}
+
+/**
+ * 将ASCII字符串智能的解析成CODE128编码字符串转码
+ */
 int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, int &codeLen, int &checkSum, char defaultType) {
 	int i = 0;
 	char currentType = defaultType;
@@ -452,59 +576,5 @@ int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, 
 	codeStrLen += 7;
 	codeStr[codeStrLen] = '\0';
 	codeLen = 1+codeIdx+1+1;
-	return 0;
-}
-
-int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
-		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
-	//设置BMP文件头信息
-	BarCode_BMPHead_Type head;
-	int ret = BarCode_BMP_Build_Normal_Head(&head, w, h);
-	if(ret!=0) return 1;
-	//解析条码
-	char codeStr[2048];
-	int codeStrLen = 0;
-	int codeLen = 0;
-	int checkSum = 0;
-	ret = Code128_Parse(barcode, barcodeLen, codeStr, codeStrLen, codeLen, checkSum, 'B');
-	if(ret!=0) return ret;
-	printf("codeStr:%s\n", codeStr);
-
-	//计算需要最小的位图宽象素数
-	unsigned int miniWidth = 10 + (codeLen-1)*11 + 13 + 10;
-	printf("miniWidth:%d\n", miniWidth);
-	if(w<miniWidth) return 2;
-	int thickness = w/miniWidth;			//基本条的宽度
-
-	//写入BMP头信息
-	ret = BarCode_BMP_Mem_Write_Head(&head, buf, bufLen);
-	if(ret!=0) return 1;
-	bmpLen = head.fh.bfSize;
-	//背景色与线条色
-	BarCode_BMRGBQuad_Type bgRGB;
-	BarCode_BMRGBQuad_Type barRGB;
-	if(isColorExchange) {
-		barRGB.rgbRed = barRGB.rgbGreen = barRGB.rgbBlue = 0xFF;
-		bgRGB.rgbRed = bgRGB.rgbGreen = bgRGB.rgbBlue = 0;
-	} else {
-		bgRGB.rgbRed = bgRGB.rgbGreen = bgRGB.rgbBlue =  0xFF;
-		barRGB.rgbRed = barRGB.rgbGreen = barRGB.rgbBlue = 0;
-	}
-	ret = BarCode_BMP_Mem_Wrire_BK_Color(head, buf, bgRGB);
-
-	//定义起始的条X坐标
-	int xBegin = thickness * 10;
-	//当前条X坐标的索引
-	int xIdx = xBegin;
-	//
-	int j;
-	for(j=0; j<codeLen-1; j++) {
-		Code128_Fill_Char(head, buf, bufLen, &codeStr[j*6], 6, xIdx, thickness, h, barRGB);
-	}
-	Code128_Fill_Char(head, buf, bufLen, &codeStr[j*6], 7, xIdx,thickness, h, barRGB);
-	return 0;
-}
-
-int Code128_Parse(const char *barcode, int len) {
 	return 0;
 }
