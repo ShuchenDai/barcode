@@ -30,6 +30,7 @@ int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
 	//设置BMP文件头信息
 	BarCode_BMPHead_Type head;
 	int ret = BarCode_BMP_Build_Head(head, w, h, 1, BARCODE_BMP_COLOR_TABLE_1);
+//	int ret = BarCode_BMP_Build_Head(head, w, h, 24, BARCODE_BMP_COLOR_TABLE_1);
 	if(ret!=0) return 1;
 	//计算X轴基本间隙长度，整个条码一共有 3 + 7*6 + 5 + 7*6 + 3 = 95, 算上空白区 14 * 95 * 12 = 121
 	if(w<121) return 2;
@@ -48,6 +49,25 @@ int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
 		bgRGB.idx.i = 0;
 		barRGB.idx.i = 1;
 	}
+//	if(isColorExchange) {
+//		bgRGB.rgb.r = 0;
+//		bgRGB.rgb.g = 0;
+//		bgRGB.rgb.b = 0;
+//		bgRGB.rgb.a = 0;
+//		barRGB.rgb.r = 0xff;
+//		barRGB.rgb.g = 0xff;
+//		barRGB.rgb.b = 0xff;
+//		barRGB.rgb.a = 0;
+//	} else {
+//		bgRGB.rgb.r = 0xff;
+//		bgRGB.rgb.g = 0xff;
+//		bgRGB.rgb.b = 0xff;
+//		bgRGB.rgb.a = 0;
+//		barRGB.rgb.r = 0;
+//		barRGB.rgb.g = 0;
+//		barRGB.rgb.b = 0;
+//		barRGB.rgb.a = 0;
+//	}
 	ret = BarCode_BMP_Mem_Wrire_BK_Color(head, buf, bgRGB);
 	//复制条码值
 	int i, j;

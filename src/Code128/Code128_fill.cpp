@@ -205,6 +205,25 @@ int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 		bgRGB.idx.i = 0;
 		barRGB.idx.i = 1;
 	}
+//	if(isColorExchange) {
+//		bgRGB.rgb.r = 0;
+//		bgRGB.rgb.g = 0;
+//		bgRGB.rgb.b = 0;
+//		bgRGB.rgb.a = 0;
+//		barRGB.rgb.r = 0xff;
+//		barRGB.rgb.g = 0xff;
+//		barRGB.rgb.b = 0xff;
+//		barRGB.rgb.a = 0;
+//	} else {
+//		bgRGB.rgb.r = 0xff;
+//		bgRGB.rgb.g = 0xff;
+//		bgRGB.rgb.b = 0xff;
+//		bgRGB.rgb.a = 0;
+//		barRGB.rgb.r = 0;
+//		barRGB.rgb.g = 0;
+//		barRGB.rgb.b = 0;
+//		barRGB.rgb.a = 0;
+//	}
 	ret = BarCode_BMP_Mem_Write_Default(head, buf, bufLen, w, h, 1, BARCODE_BMP_COLOR_TABLE_1, bgRGB);
 	if(ret!=0) return 1;
 	bmpLen = head.fh.bfSize;

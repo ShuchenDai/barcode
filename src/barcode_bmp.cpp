@@ -252,10 +252,7 @@ int BarCode_BMP_Mem_Fill_Rect(BarCode_BMPHead_Type &head, unsigned char *buf, un
 	unsigned int xBegin = x;
 	unsigned int xEnd = x+w;
 	unsigned int yBegin = head.ih.biHeight-(y+h);
-//	unsigned int yBegin = y;
 	unsigned int yEnd = yBegin+h;
-
-
 	unsigned  i,j;
 	switch(head.ih.biBitCount) {
 		case 1:
