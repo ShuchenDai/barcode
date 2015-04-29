@@ -15,11 +15,15 @@ using namespace std;
 #include "Print/barcode_print.h"
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <stdlib.h>
 
 #define LEN 2024*1024+100
 unsigned char buf[LEN];
+unsigned char buf2[LEN*10];
+unsigned char buf3[1024];
 
-int main() {
+int main(int argv, char **args) {
 	unsigned int imgLen = 0;
 
 //	memset(buf, 0, LEN);
@@ -76,14 +80,58 @@ int main() {
 	unsigned int code128StrLen = sizeof("abcdefghjklm123456789")-1;
 //	Code128B_Auto_Fill_Buf(code128Str, code128StrLen, buf, LEN, 600, w, h, imgLen, false);
 //	Code128B_Fill_Buf(code128Str, code128StrLen, buf, LEN, 600, w, h, imgLen, false);
+	int dpi = 300;
 	unsigned char *p;
 	unsigned int fileLen;
-	Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, 600, w, h, imgLen, false, &p, fileLen);
-	printf("%s",buf);
+	ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpi, w, h, imgLen, false, &p, fileLen);
+	if(ret!=0) {
+		printf("%s\n", "Barcode_Print_Fill_Buf err!");
+		return 1;
+	}
+	unsigned int strLen;
+	ret = Barcode_Print_Fill_Buf_Str(code128Str, code128StrLen, buf3, 1024, strLen, w, h, dpi);
+	if(ret!=0) {
+		printf("%s\n", "Barcode_Print_Fill_Buf_Str err!");
+		return 1;
+	}
 
+	buf3[strLen] = 0;
+	printf("Str: %s\n", buf3);
 
-	FILE *fout = fopen("/home/welkinm/bmp.prn", "w");
+	//输出单独的位图文件
+	FILE *fin, *fout;
+	fout = fopen("/home/welkinm/bmp.prn", "w");
     fwrite(buf,1, fileLen, fout);
+    fclose(fout);
+
+	printf("%d\n", argv);
+	if(argv<3) return 0;
+
+    fin = fopen(args[1], "r");
+    if(fin<=0) {
+    	printf("%d(%s)\n", errno, strerror(errno));
+    	return 1;
+    }
+    fout = fopen("/home/welkinm/out.prn", "w");
+
+    int len=atoi(args[2]);
+    int readLen = 0;
+    readLen = fread(buf2, 1, len, fin);
+    if(len!=readLen) {
+    	printf("Read err: %d(%s)\n", errno, strerror(errno));
+    	return 1;
+    }
+    fwrite(buf2, 1, readLen, fout);//写源PRN开始部份
+    fwrite(p, 1, imgLen, fout);//写入条形码
+    fwrite(buf3, 1, strLen, fout);//写入字
+
+
+    readLen = fread(buf2, 1, 1024*1024, fin);//写源PRN结尾部份
+    while(readLen>0) {
+    	fwrite(buf2, 1, readLen, fout);
+    	readLen = fread(buf2, 1, 1024*1024, fin);
+    }
+    fclose(fin);
     fclose(fout);
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -92,3 +140,21 @@ int main() {
 	count<< "Big" <<endl;
 #endif
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

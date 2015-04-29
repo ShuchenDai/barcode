@@ -59,10 +59,9 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 	p += sizeof("\x1b*p0Y")-1;
 	memcpy(p, "\x1b*p-10000Y", sizeof("\x1b*p-10000Y")-1);	//Y position is top
 	p += sizeof("\x1b*p-10000Y")-1;
-	ret = sprintf(strTmp, "\x1b*p+%dY", dpi/10);	//Raster Graphics Resolution
+	ret = sprintf(strTmp, "\x1b*p+%dY", dpi/10);
 	memcpy(p, strTmp, ret);
 	p += ret;
-
 	unsigned char *pBmpBuf = new unsigned char[BARCODE_PRINT_TEMP_LEN];
 	ret = Code128B_Auto_Fill_Buf(barcode, barcodeLen, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpi, w, h, bmpLen, isColorExchange);
 	if(ret!=0) {
@@ -117,7 +116,48 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 
 
 
+#define BARCODE_PRINT_DEFAULT_FONT "\x1b(8U\x1b(s0P\x1b(s16H\x1b(s6V\x1b(s0S\x1b(s0B"
+#define BARCODE_PRINT_DEFAULT_FONT_LEN sizeof(BARCODE_PRINT_DEFAULT_FONT)-1
+#define BARCODE_PRINT_POINT_SIZE ((double)1/72)//0.01389
+#define BARCODE_PRINT_FONT_H 6
 
+int Barcode_Print_Fill_Buf_Str(const char *str, unsigned int strLen, unsigned char *buf, unsigned int bufLen,
+		unsigned int &retLen, unsigned int w, unsigned int h, unsigned int dpi) {
+	int ret = 0;
+	unsigned char *p = buf;
+	char strTmp[128];
+	memcpy(p, "\x1b&f0S", sizeof("\x1b&f0S")-1);	//PUSH Position
+	p += sizeof("\x1b&f0S")-1;
+	memcpy(p, "\x1b*p0X", sizeof("\x1b*p0X")-1);	//X position is 0
+	p += sizeof("\x1b*p0X")-1;
+//	ret = sprintf(strTmp, "\x1b*p+%dx", w-80);
+//	memcpy(p, strTmp, ret);	//X position is 0
+//	p += ret;
+	memcpy(p, "\x1b*p0Y", sizeof("\x1b*p0Y")-1);	//Y position is 0
+	p += sizeof("\x1b*p0Y")-1;
+	memcpy(p, "\x1b*p-10000Y", sizeof("\x1b*p-10000Y")-1);	//Y position is top
+	p += sizeof("\x1b*p-10000Y")-1;
+	ret = sprintf(strTmp, "\x1b*p+%dY", dpi/10+h+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpi));
+	memcpy(p, strTmp, ret);
+	p += ret;
+
+	memcpy(p, BARCODE_PRINT_DEFAULT_FONT, BARCODE_PRINT_DEFAULT_FONT_LEN);
+	p += BARCODE_PRINT_DEFAULT_FONT_LEN;
+	*p = ' ';
+	p++;
+	*p = ' ';
+	p++;
+	*p = ' ';
+	p++;
+	for(unsigned int i = 0; i<strLen; i++) {
+		*p = str[i];
+		p++;
+	}
+	memcpy(p, "\x1b&f1S", sizeof("\x1b&f1S")-1);	//POP Position
+	p += sizeof("\x1b&f1S")-1;
+	retLen = p - buf;
+	return 0;
+}
 
 
 
