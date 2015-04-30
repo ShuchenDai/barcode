@@ -16,6 +16,6 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 		unsigned int& w, unsigned int& h,
 		unsigned char** bmpBegin, unsigned int& bmpLen,
 		unsigned char** strBegin, unsigned int& strLen,
-		unsigned int& fileLen);
+		unsigned int& bmpAndStrLen, unsigned int& fileLen);
 
 #endif /* PRINT_BARCODE_PRINT_H_ */

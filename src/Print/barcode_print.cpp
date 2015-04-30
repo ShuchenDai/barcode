@@ -56,7 +56,7 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 		unsigned int& w, unsigned int& h,
 		unsigned char** bmpBegin, unsigned int& bmpLen,
 		unsigned char** strBegin, unsigned int& strLen,
-		unsigned int& fileLen) {
+		unsigned int& bmpAndStrLen, unsigned int& fileLen) {
 	int ret = 0;
 	unsigned char *p = buf;
 	char strTmp[128];
@@ -68,12 +68,13 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 	memcpy(p, COMMOM_PJL_HEAD, COMMOM_PJL_HEAD_LEN);
 	p += COMMOM_PJL_HEAD_LEN;
 
-	//返回bmp开始位置
-	*bmpBegin = p;
+
 	//设置分辨率
 	ret = sprintf(strTmp, "\x1b&u%dD", dpiPage);
 	memcpy(p, strTmp, ret);
 	p += ret;
+	//返回bmp开始位置
+	*bmpBegin = p;
 	//压光标栈，移动到左上角
 	memcpy(p, "\x1b&f0S", sizeof("\x1b&f0S")-1);	//PUSH Position
 	p += sizeof("\x1b&f0S")-1;
@@ -167,15 +168,15 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 		p++;
 	}
 	//str长度
-	fileLen = p - buf;
+	fileLen = p - *strBegin;
 
 	//填充出栈原位置光标打印指令
 	memcpy(p, "\x1b&f1S", sizeof("\x1b&f1S")-1);	//POP Position
 	p += sizeof("\x1b&f1S")-1;
+	bmpAndStrLen = p - *bmpBegin;
 	//填充PJL PCL5结束符
 	memcpy(p, COMMOM_PJL_TAIL, COMMOM_PJL_TAIL_LEN);
 	p += COMMOM_PJL_TAIL_LEN;
-
 	fileLen = p - buf;
 	return 0;
 }
