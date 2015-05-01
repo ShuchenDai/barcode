@@ -85,13 +85,13 @@ char Code128_Get_Char_Type(char c, char currentType) {
 }
 
 /**
- * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
+ * 指定生成的BMP图像的宽和高，强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
  */
 int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
 	//计算X轴基本间隙长度，整个条码一共有 10 + 11 + barcodeLen*11 + 11 + 13 + 10
 	unsigned int miniWidth = 10 + 11 + barcodeLen*11 + 11 + 13 + 10;
-	printf("miniWidth:%d\n", miniWidth);
+//	printf("miniWidth:%d\n", miniWidth);
 	if(w<miniWidth) return 2;
 	int thickness = w/miniWidth;			//基本条的宽度
 	//设置BMP文件头信息
@@ -132,7 +132,7 @@ int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned cha
 
 
 /**
- * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ * 指定生成的BMP图像的宽和高，以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
  */
 int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
@@ -143,10 +143,10 @@ int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 	int checkSum = 0;
 	int ret = Code128_Parse(barcode, barcodeLen, codeStr, codeStrLen, codeLen, checkSum, 'B');
 	if(ret!=0) return ret;
-	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
+//	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
 	//计算需要最小的位图宽象素数
 	unsigned int miniWidth = 10 + (codeLen-1)*11 + 13 + 10;
-	printf("miniWidth:%d\n", miniWidth);
+//	printf("miniWidth:%d\n", miniWidth);
 	if(w<miniWidth) return 2;
 	int thickness = w/miniWidth;			//基本条的宽度
 	//设置BMP文件头信息
@@ -172,7 +172,9 @@ int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 }
 
 
-
+/**
+ * 指定生成的BMP图像的打印分辨率，以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ */
 int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
 	//解析条码
@@ -183,16 +185,16 @@ int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigne
 	int checkSum = 0;
 	ret = Code128_Parse(barcode, barcodeLen, codeStr, codeStrLen, codeLen, checkSum, 'B');
 	if(ret!=0) return ret;
-	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
+//	printf("codeStr:%s\ncodeStrLen:%d\ncodeLen:%d\n", codeStr, codeStrLen, codeLen);
 	//计算需要最小的位图宽象素数
 	unsigned int miniWidth = 10 + (codeLen-1)*11 + 13 + 10;
-	printf("miniWidth:%d\n", miniWidth);
+//	printf("miniWidth:%d\n", miniWidth);
 	double wTemp = CODE128_MINI_BAR_WIDTH_IN*dpi;
 	w = (int)wTemp;
 	if((wTemp-w)>0) w++;	//最小条的宽度必需进位，不能四舍五入
 	w = w * miniWidth;
 	h = CODE128_MINI_BAR_HEIGHT_IN*dpi;
-	printf("width:%d; height:%d\n", w, h);
+//	printf("width:%d; height:%d\n", w, h);
 	int thickness = w/miniWidth;			//基本条的宽度
 	//设置BMP文件头信息
 	BarCode_BMPHead_Type head;

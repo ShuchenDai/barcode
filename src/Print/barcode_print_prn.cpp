@@ -41,10 +41,11 @@
 \x1b%-12345X"
 #define COMMOM_PJL_TAIL_LEN sizeof(COMMOM_PJL_TAIL)-1
 //选取字符集
-#define BARCODE_PRINT_DEFAULT_FONT "\x1b(8U\x1b(s0P\x1b(s16H\x1b(s6V\x1b(s0S\x1b(s0B"
+#define BARCODE_PRINT_DEFAULT_FONT "\x1b(8U\x1b(s0P\x1b(s%dH\x1b(s%dV\x1b(s0S\x1b(s0B"
 #define BARCODE_PRINT_DEFAULT_FONT_LEN sizeof(BARCODE_PRINT_DEFAULT_FONT)-1
 //字体单位点大小
 #define BARCODE_PRINT_POINT_SIZE ((double)1/72)//0.01389
+#define BARCODE_PRINT_FONT_SPAN_PITCH 15
 //字体字高
 #define BARCODE_PRINT_FONT_H 6
 #define BARCODE_PRINT_TEMP_LEN 1028*128
@@ -70,7 +71,6 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	memcpy(p, COMMOM_PJL_HEAD, COMMOM_PJL_HEAD_LEN);
 	p += COMMOM_PJL_HEAD_LEN;
 
-
 	//设置分辨率
 	ret = sprintf(strTmp, "\x1b&u%dD", dpiPage);
 	memcpy(p, strTmp, ret);
@@ -80,8 +80,18 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	//压光标栈，移动到左上角
 	memcpy(p, "\x1b&f0S", sizeof("\x1b&f0S")-1);	//PUSH Position
 	p += sizeof("\x1b&f0S")-1;
-	memcpy(p, "\x1b*p0X", sizeof("\x1b*p0X")-1);	//X position is 0
-	p += sizeof("\x1b*p0X")-1;
+	switch(barcodeType) {
+	case BARCODE_TYPE_EAN13:
+		ret = sprintf(strTmp, "\x1b*p%dX", (int)(dpiPage*1.35/BARCODE_PRINT_FONT_SPAN_PITCH));
+		memcpy(p, strTmp, ret);
+		p += ret;
+//		memcpy(p, "\x1b*p0X", sizeof("\x1b*p0X")-1);	//X position is 0
+//		p += sizeof("\x1b*p0X")-1;
+		break;
+	default:
+		memcpy(p, "\x1b*p0X", sizeof("\x1b*p0X")-1);	//X position is 0
+		p += sizeof("\x1b*p0X")-1;
+	}
 	memcpy(p, "\x1b*p0Y", sizeof("\x1b*p0Y")-1);	//Y position is 0
 	p += sizeof("\x1b*p0Y")-1;
 	memcpy(p, "\x1b*p-10000Y", sizeof("\x1b*p-10000Y")-1);	//Y position is top
@@ -93,8 +103,7 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	unsigned char *pBmpBuf = new unsigned char[BARCODE_PRINT_TEMP_LEN];
 	switch(barcodeType) {
 	case BARCODE_TYPE_EAN13:
-//		ret = EAN13_Fill_Buf(barcode, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
-		ret = 1;
+		ret = EAN13_Fill_Buf((char *)barcode, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
 		break;
 	case BARCODE_TYPE_CODE128:
 		ret = Code128B_Auto_Fill_Buf(barcode, barcodeLen, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
@@ -159,28 +168,54 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	memcpy(p, "\x1b*p-10000Y", sizeof("\x1b*p-10000Y")-1);	//Y position is top
 	p += sizeof("\x1b*p-10000Y")-1;
 	//移动光标到条码下面
-	ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage));
+	switch(barcodeType) {
+	case BARCODE_TYPE_EAN13:
+		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*3/5));
+		break;
+	default:
+		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage));
+	}
 	memcpy(p, strTmp, ret);
 	p += ret;
-	//选择打印字体，大小等
-	memcpy(p, BARCODE_PRINT_DEFAULT_FONT, BARCODE_PRINT_DEFAULT_FONT_LEN);
-	p += BARCODE_PRINT_DEFAULT_FONT_LEN;
-	//开始填充文字
-	*p = ' ';
-	p++;
-	*p = ' ';
-	p++;
-	*p = ' ';
-	p++;
 
-	//返回打印文字的开始位置
-	*strBegin = p;
-	for(unsigned int i = 0; i<barcodeLen; i++) {
-		*p = barcode[i];
+	//选择打印字体，大小等
+	ret = sprintf(strTmp, BARCODE_PRINT_DEFAULT_FONT, BARCODE_PRINT_FONT_SPAN_PITCH, BARCODE_PRINT_FONT_H);
+	memcpy(p, strTmp, ret);
+	p += ret;
+//	memcpy(p, BARCODE_PRINT_DEFAULT_FONT, BARCODE_PRINT_DEFAULT_FONT_LEN);
+//	p += BARCODE_PRINT_DEFAULT_FONT_LEN;
+
+	//开始填充文字
+	switch(barcodeType) {
+	case BARCODE_TYPE_EAN13:
+		*p = barcode[0];
 		p++;
+		*p = ' ';
+		p++;
+		for(unsigned int i = 1; i<7; i++) {
+			*p = barcode[i];
+			p++;
+		}
+		*p = ' ';
+		p++;
+		for(unsigned int i = 7; i<13; i++) {
+			*p = barcode[i];
+			p++;
+		}
+		break;
+	default:
+		*p = ' ';
+		p++;
+		//返回打印文字的开始位置
+		*strBegin = p;
+		for(unsigned int i = 0; i<barcodeLen; i++) {
+			*p = barcode[i];
+			p++;
+		}
+		//str长度
+		fileLen = p - *strBegin;
 	}
-	//str长度
-	fileLen = p - *strBegin;
+
 
 	//填充出栈原位置光标打印指令
 	memcpy(p, "\x1b&f1S", sizeof("\x1b&f1S")-1);	//POP Position

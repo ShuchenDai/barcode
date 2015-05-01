@@ -10,7 +10,10 @@
 #include <stdio.h>
 #include "EAN13_fill.h"
 
-char EAN13_Get_Check_Sum(const char *barcode) {
+/*
+ * 计算较验和
+ */
+char EAN13_Get_Check_Sum(char *barcode) {
 	unsigned int ret = 0;
 	//将最右边一个数位作为“奇数”位，从右向左为每个字符指定奇数/偶数位。
 	//对所有奇数位上的数值求和，将结构乘以3。
@@ -25,7 +28,10 @@ char EAN13_Get_Check_Sum(const char *barcode) {
 		return ret;
 }
 
-int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
+/**
+ * 指定生成的BMP图像的宽和高
+ */
+int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
 	//设置BMP文件头信息
 	BarCode_BMPHead_Type head;
@@ -34,9 +40,9 @@ int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
 	if(ret!=0) return 1;
 	//计算X轴基本间隙长度，整个条码一共有 3 + 7*6 + 5 + 7*6 + 3 = 95, 算上空白区 14 * 95 * 12 = 121
 	if(w<121) return 2;
-	int thickness = w/121;		//基本条的宽度
+	int thickness = w/95;		//基本条的宽度
 	//写入BMP头信息
-	ret = BarCode_BMP_Mem_Write_Head(head, buf, len);
+	ret = BarCode_BMP_Mem_Write_Head(head, buf, bufLen);
 	if(ret!=0) return 1;
 	bmpLen = head.fh.bfSize;
 	//背景色与线条色
@@ -84,7 +90,7 @@ int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
 	int yLongBarBegin = 0;
 	int yShortBarBegin = 0;
 	//定义起始的条X坐标
-	int xBegin = thickness * 14;
+	int xBegin = 0;//thickness * 14;
 	//当前条X坐标的索引
 	int xIdx = xBegin;
 	//当前数字的编码
@@ -122,6 +128,41 @@ int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len,
 	BarCode_BMP_Mem_Fill_Rect(head, buf, xIdx, yLongBarBegin, thickness, yLongBarHeight, barRGB);
 	return 0;
 }
+
+
+/**
+ * 指定生成的BMP图像的打印分辨率
+ */
+int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange) {
+	//计算X轴基本间隙长度，整个条码一共有 3 + 7*6 + 5 + 7*6 + 3 = 95, 算上空白区 14 * 95 * 12 = 121
+	unsigned int miniWidth = 95;
+	double wTemp = EAN13_MINI_BAR_WIDTH_IN*dpi;
+	w = (int)wTemp;
+	if((wTemp-w)>0) w++;	//最小条的宽度必需进位，不能四舍五入
+	w = w * miniWidth;
+	h = EAN13_MINI_BAR_HEIGHT_IN*dpi;
+	return EAN13_Fill_Buf(barcode, buf, bufLen, w, h, bmpLen, isColorExchange);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

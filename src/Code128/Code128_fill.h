@@ -158,17 +158,17 @@ char Code128_Get_Char_Type(char c, char currentType);
 //int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, int &codeLen, int &checkSum, char defaultType);
 
 /**
- * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
+ * 指定生成的BMP图像的宽和高，强制全部使用CODE128 B编码，也只支持CODE128 B中的字符（不包含控制字符）
  */
 int Code128B_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
 /**
- * 指定生成的BMP图像的宽和高（宽度会被微调以适应4字节对齐），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ * 指定生成的BMP图像的宽和高，以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
  */
 int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
 /**
- * 指定生成的BMP图像的打印分辨率（宽度和高度自动以最小可识别单位计算），以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
+ * 指定生成的BMP图像的打印分辨率，以CODE128 B开始编码，对控制字符和连续的数字（连续大于3位）智能转码，以优化长度
  */
 int Code128B_Auto_Fill_Buf(const char *barcode, unsigned int barcodeLen, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
 		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);

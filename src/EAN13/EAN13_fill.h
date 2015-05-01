@@ -8,6 +8,8 @@
 #ifndef EAN13_EAN13_FILL_H_
 #define EAN13_EAN13_FILL_H_
 
+#define EAN13_MINI_BAR_WIDTH_IN	0.008	//能被识别的最小列宽度，单位英寸
+#define EAN13_MINI_BAR_HEIGHT_IN	0.12	//最小高度
 
 const unsigned char EAN13_LEFT_HAND_ENCODING_ODD[10]={13,25,19,61,35,49,47,59,55,11};
 //const unsigned char EAN13_LEFT_HAND_ENCODING_ODD[10] = {
@@ -62,10 +64,21 @@ const unsigned char EAN13_LEFT_HAND_ENCODING_RULES[10]={63,52,50,49,44,38,35,42,
 //	0b101001,	//8  odd  even odd  even even odd
 //	0b100101,	//9  odd  even even odd  even odd
 //};
+/*
+ * 计算较验和
+ */
+char EAN13_Get_Check_Sum(char *barcode);
 
-char EAN13_Get_Check_Sum(const char *barcode);
-int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int len, unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
-
+/**
+ * 指定生成的BMP图像的宽和高
+ */
+int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int bufLen,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
+/**
+ * 指定生成的BMP图像的打印分辨率
+ */
+int EAN13_Fill_Buf(char *barcode, unsigned char *buf, unsigned int bufLen, unsigned int dpi,
+		unsigned int& w, unsigned int& h, unsigned int& bmpLen, bool isColorExchange);
 
 
 #endif /* EAN13_EAN13_FILL_H_ */
