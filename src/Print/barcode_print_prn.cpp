@@ -5,14 +5,15 @@
  *      Author: welkinm
  */
 
-#include "barcode_print.h"
+#include "barcode_print_prn.h"
+
 #include "../Code128/Code128_fill.h"
 #include "../EAN13/EAN13_fill.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include "../barcode.h"
 
 #define BARCODE_PRINT_DEFAULT_DPI	300
 #define BARCODE_PRINT_DEFAULT_DPI_PAGE	BARCODE_PRINT_DEFAULT_DPI	//默认文档分辨率
@@ -50,13 +51,14 @@
 
 
 
-int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
+int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int barcodeType,
 		unsigned char *buf, unsigned int bufLen,
 		unsigned int dpiPage, unsigned int dpiBmp,
 		unsigned int& w, unsigned int& h,
 		unsigned char** bmpBegin, unsigned int& bmpLen,
 		unsigned char** strBegin, unsigned int& strLen,
 		unsigned int& bmpAndStrLen, unsigned int& fileLen) {
+	if(!(barcodeType==BARCODE_TYPE_EAN13 || barcodeType==BARCODE_TYPE_CODE128)) return 1;
 	int ret = 0;
 	unsigned char *p = buf;
 	char strTmp[128];
@@ -89,15 +91,25 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 	p += ret;
 	//填充条码bmp到临时缓存中
 	unsigned char *pBmpBuf = new unsigned char[BARCODE_PRINT_TEMP_LEN];
-	ret = Code128B_Auto_Fill_Buf(barcode, barcodeLen, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
+	switch(barcodeType) {
+	case BARCODE_TYPE_EAN13:
+//		ret = EAN13_Fill_Buf(barcode, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
+		ret = 1;
+		break;
+	case BARCODE_TYPE_CODE128:
+		ret = Code128B_Auto_Fill_Buf(barcode, barcodeLen, pBmpBuf, BARCODE_PRINT_TEMP_LEN, dpiBmp, w, h, bmpLen, false);
+		break;
+	}
 	if(ret!=0) {
-		printf("Code128B_Auto_Fill_Buf err\n");
+		delete []pBmpBuf;
+		printf("barcode fill buf err\n");
 		return ret;
 	}
 	//构造条码bmp文件头，用于取得bmp的实际存储宽度
 	BarCode_BMPHead_Type head;
 	ret = BarCode_BMP_Build_Head(head, w, h, 1, BARCODE_BMP_COLOR_TABLE_1);
 	if(ret!=0) {
+		delete []pBmpBuf;
 		printf("BarCode_BMP_Build_Head err\n");
 		return 1;
 	}

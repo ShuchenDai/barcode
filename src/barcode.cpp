@@ -12,7 +12,9 @@ using namespace std;
 #include "EAN13/EAN13_fill.h"
 #include "Code128/Code128_fill.h"
 #include "barcode_bmp.h"
-#include "Print/barcode_print.h"
+#include "Print/barcode_print_prn.h"
+#include "Print/barcode_inject_prn.h"
+#include "barcode.h"
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -54,19 +56,6 @@ int findCmdParamete(const unsigned char* cache,unsigned int cLen,
 		int &retIdx, unsigned  int &retLen, double &retValue);
 
 
-//打印指令类型
-enum Printer_CMD_Type_TypeDef {
-	PRINTER_CMD_NULL = 0,
-	PRINTER_CMD_PJL = 1,
-	PRINTER_CMD_PCL
-};
-//打印指令类型
-enum Printer_CMD_SubType_TypeDef {
-	PRINTER_SUBCMD_NULL = 0,
-	PRINTER_SUBCMD_PCL5,
-	PRINTER_SUBCMD_PCLXL,
-};
-
 char printerCMDType = PRINTER_CMD_NULL;
 
 
@@ -79,12 +68,6 @@ int main(int argv, char **args) {
 	unsigned int dpiPage = 600, dpiBmp = 300;
 	unsigned int w = 370;
 	unsigned int h = 80;
-	unsigned char *bmpBegin;
-	unsigned int bmpLen;
-	unsigned char *strBegin;
-	unsigned int strLen;
-	unsigned int bmpAndStrLen;
-	unsigned int fileLen;
 
 //	ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h, &bmpBegin, bmpLen, &strBegin,  strLen, fileLen);
 //	if(ret!=0) {
@@ -97,262 +80,13 @@ int main(int argv, char **args) {
 //	fwrite(buf,1, fileLen, fout);
 //	fclose(fout);
 
-	if(argv<2) return 0;
+	ret = Barcode_Inject_Prn("/home/welkinm/basereport_2010_001.pcl", "/home/welkinm/barcode.prn",
+			BARCODE_TYPE_CODE128, code128Str, code128StrLen);
+	if(ret!=0) {
+		printf("%s\n", "Barcode_Print_Fill_Buf err!");
+		return 1;
+	}
 
-    fin = fopen(args[1], "r");
-    if(fin<=0) {
-    	printf("%d(%s)\n", errno, strerror(errno));
-    	return 1;
-    }
-    fout = fopen("/home/welkinm/demoout.prn", "w");
-
-    unsigned char pData[512];
-//    bool isFirstPkg = false;		//是否是文件头
-    bool isFoundDpiPage = false;	//是否己找到设置打印页面分辨率
-    bool isFoundDpiBmp = false;	//是否己找到设置位图分辨率
-    bool isFillBmp = false;		//是否己在打印文件中填充位图
-
-	char printerSubCMDType = PRINTER_SUBCMD_NULL;
-	bool isFoundSubCMDType = false;
-
-#define PACKET_LOG_RESERVED_CMD_LEN 32
-#define PACKET_LOG_RESERVED_CMD_LEN_D PACKET_LOG_RESERVED_CMD_LEN*2
-	unsigned char interceptCmd[PACKET_LOG_RESERVED_CMD_LEN_D];
-#define PRINT_DEFAULT_RESOLUTION 300
-
-//	int retIdx;
-//	unsigned int retLen;
-//	ret = fread(buf, 1, LEN, fin);
-//	printf("read file len: %d\n", ret);
-//	if(ret<0) {
-//		printf("%s\n","fread err!");
-//		return 1;
-//	}
-//	fileLen = ret;
-//	ret = findStrParament(buf, fileLen, (const unsigned char *)"@PJL ENTER LANGUAGE=", sizeof("@PJL ENTER LANGUAGE=")-1,
-//			(const unsigned char *)"\n", 1, retIdx, retLen);
-//	if(retIdx>=0) {
-//		printf("found @PJL ENTER LANGUAGE=, idx:%d, len:%d\n", retIdx, retLen);
-//	}
-//	int cmdValue;
-//	ret = findCmdParamete(buf, fileLen, (const unsigned char *)"\x1b*t", sizeof("\x1b*t")-1,
-//			(const unsigned char *)"R", 1, cmdValue);
-//	if(ret>=0) {
-//		printf("found Raster Graphics Resolution, val:%d\n", cmdValue);
-//	}
-//	ret = findCmdParamete(buf, fileLen, (const unsigned char *)"\x1b&u", sizeof("\x1b&u")-1,
-//			(const unsigned char *)"D", 1, cmdValue);
-//	if(ret>=0) {
-//		printf("found Unit-of-Measure, val:%d\n", cmdValue);
-//	}
-//	ret = findCmdParamete(buf, fileLen, (const unsigned char *)"\x1b&l", sizeof("\x1b&l")-1,
-//			(const unsigned char *)"A", 1, cmdValue);
-//	if(ret>=0) {
-//		printf("found Unit-of-Measure, val:%d\n", cmdValue);
-//	}
-
-
-    unsigned int dLen;
-    dLen = fread(pData, 1, 376, fin);
-    unsigned char temp[128];
-    int retIdx = 0;
-    unsigned int retLen;
-    int pkgLen = 0;
-	double value;
-	bool isWrite;
-    while(dLen>0) {
-    	isWrite = true;
-    	//处理头
-		if(printer_pkg_is_head(pData, dLen)) {
-			printer_get_cmd_type(pData, dLen);
-			if(printerCMDType==PRINTER_CMD_PCL) {
-				printerSubCMDType = PRINTER_SUBCMD_PCL5;
-				isFoundSubCMDType = true;
-			} else {
-				printerSubCMDType = PRINTER_SUBCMD_NULL;
-				isFoundSubCMDType = false;
-			}
-//			isFirstPkg = true;
-			isFoundDpiPage = false;
-			isFoundDpiBmp = false;
-			isFillBmp = false;
-			dpiPage = PRINT_DEFAULT_RESOLUTION;
-			dpiBmp = PRINT_DEFAULT_RESOLUTION;
-			memset(interceptCmd+PACKET_LOG_RESERVED_CMD_LEN, 0, PACKET_LOG_RESERVED_CMD_LEN);
-		}
-		if(isFillBmp==false) {
-			pkgLen = PACKET_LOG_RESERVED_CMD_LEN>dLen? dLen: PACKET_LOG_RESERVED_CMD_LEN;
-			memcpy(interceptCmd, interceptCmd+PACKET_LOG_RESERVED_CMD_LEN, PACKET_LOG_RESERVED_CMD_LEN);
-			memcpy(interceptCmd+PACKET_LOG_RESERVED_CMD_LEN, pData, pkgLen);
-			if(isFoundSubCMDType==false) {
-				ret = findStrParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen, (const unsigned char *)"@PJL ENTER LANGUAGE=", sizeof("@PJL ENTER LANGUAGE=")-1,
-						(const unsigned char *)"\n", 1, retIdx, retLen, temp);
-				if(ret==0) {
-					isFoundSubCMDType = true;
-					if(strcmp("PCL", (const char*)temp)==0) {
-						printerSubCMDType = PRINTER_SUBCMD_PCL5;
-						printf("FoundSubCMDType PCL \n");
-					} else if(strcmp("PCLXL", (const char*)temp)==0) {
-						printerSubCMDType = PRINTER_SUBCMD_PCLXL;
-						printf("FoundSubCMDType PCLXL \n");
-					} else {
-						isFoundSubCMDType = false;
-						printerSubCMDType = PRINTER_SUBCMD_NULL;
-						printf("FoundSubCMDType NULL \n");
-					}
-				}
-			}
-			if(isFoundSubCMDType) {
-				if(printerSubCMDType == PRINTER_SUBCMD_PCL5) {
-					//Page DPI
-					if(isFoundDpiPage==false) {
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen, (const unsigned char *)"\x1b&u", sizeof("\x1b&u")-1,
-												(const unsigned char *)"D", 1, retIdx, retLen, value);
-						if(ret==0) {
-							isFoundDpiPage = true;
-							printf("FoundDpiPage %f \n", value);
-							dpiPage = value;
-						}
-					}
-					//Bitmap DPI
-					if(isFoundDpiBmp==false) {
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen, (const unsigned char *)"\x1b*t", sizeof("\x1b*t")-1,
-												(const unsigned char *)"R", 1, retIdx, retLen, value);
-						if(ret==0) {
-							isFoundDpiBmp = true;
-							printf("FoundDpiBmp %f \n", value);
-							dpiBmp = value;
-						}
-					}
-
-
-					if(isFillBmp==false) {
-						//First move point Vertical Unit
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b*p", sizeof("\x1b*p")-1, (const unsigned char *)"Y", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Vertical(Unit): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-					if(isFillBmp==false) {
-						//First move point Vertical Decipoints
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b&a", sizeof("\x1b&a")-1, (const unsigned char *)"V", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Vertical(Decipoints): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-					if(isFillBmp==false) {
-						//First move point Vertical Rows
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b&a", sizeof("\x1b&a")-1, (const unsigned char *)"R", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Vertical(Rows): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-
-
-					if(isFillBmp==false) {
-						//First move point Horizontal Unit
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b*p", sizeof("\x1b*p")-1, (const unsigned char *)"X", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Horizontal(Unit): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-					if(isFillBmp==false) {
-						//First move point Horizontal Decipoints
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b&a", sizeof("\x1b&a")-1, (const unsigned char *)"H", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Horizontal(Decipoints): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-					if(isFillBmp==false) {
-						//First move point Horizontal Columns
-						ret = findCmdParamete(interceptCmd, PACKET_LOG_RESERVED_CMD_LEN_D, pData, dLen,
-								(const unsigned char *)"\x1b&a", sizeof("\x1b&a")-1, (const unsigned char *)"C", 1, retIdx, retLen, value);
-						if(ret==0) {
-							printf("get Cursor Position Horizontal(Columns): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
-							isWrite = false;
-							ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h,
-									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
-							if(ret!=0) {
-								printf("%s\n", "Barcode_Print_Fill_Buf err!");
-								return 1;
-							}
-							fwrite(pData, 1, retIdx+retLen, fout);
-							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
-							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
-							isFillBmp = true;
-						}
-					}
-				}
-			}
-			memcpy(interceptCmd+PACKET_LOG_RESERVED_CMD_LEN, pData+dLen-pkgLen, pkgLen);
-		}
-		if(isWrite) {
-			fwrite(pData, 1, dLen, fout);
-		}
-		fflush(fout);
-		//////////////////////////////////////////
-    	dLen = fread(pData, 1, 512, fin);
-    }
 //    if(len!=readLen) {
 //    	printf("Read err: %d(%s)\n", errno, strerror(errno));
 //    	return 1;
@@ -365,8 +99,8 @@ int main(int argv, char **args) {
 //    	fwrite(buf2, 1, readLen, fout);
 //    	readLen = fread(buf2, 1, 1024*1024, fin);
 //    }
-    fclose(fin);
-    fclose(fout);
+//    fclose(fin);
+//    fclose(fout);
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	cout<< "Little" <<endl;

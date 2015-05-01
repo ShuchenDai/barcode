@@ -5,12 +5,12 @@
  *      Author: welkinm
  */
 
-#ifndef PRINT_BARCODE_PRINT_H_
-#define PRINT_BARCODE_PRINT_H_
+#ifndef PRINT_BARCODE_PRINT_PRN_H_
+#define PRINT_BARCODE_PRINT_PRN_H_
 
 
 
-int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
+int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int barcodeType,
 		unsigned char *buf, unsigned int bufLen,
 		unsigned int dpiPage, unsigned int dpiBmp,
 		unsigned int& w, unsigned int& h,
@@ -18,4 +18,4 @@ int Barcode_Print_Fill_Buf(const char *barcode, unsigned int barcodeLen,
 		unsigned char** strBegin, unsigned int& strLen,
 		unsigned int& bmpAndStrLen, unsigned int& fileLen);
 
-#endif /* PRINT_BARCODE_PRINT_H_ */
+#endif /* PRINT_BARCODE_PRINT_PRN_H_ */
