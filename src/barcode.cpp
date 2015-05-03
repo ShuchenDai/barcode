@@ -20,19 +20,68 @@ using namespace std;
 #include <errno.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+#include <sys/time.h>
+
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <string.h>
+#include <stdio.h>
+
 #define LEN 2024*1024+100
 unsigned char buf[LEN];
 unsigned char buf2[LEN*10];
 unsigned char buf3[1024];
 
-
+int get_mac(char* mac)
+{
+    int sockfd;
+    struct ifreq tmp;
+    char mac_addr[30];
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if( sockfd < 0)
+    {
+        perror("create socket fail\n");
+        return 1;
+    }
+    memset(&tmp,0,sizeof(struct ifreq));
+    strncpy(tmp.ifr_name,"eth0",sizeof(tmp.ifr_name)-1);
+    if( (ioctl(sockfd,SIOCGIFHWADDR,&tmp)) < 0 )
+    {
+        printf("mac ioctl error\n");
+        return 1;
+    }
+    sprintf(mac_addr, "%02x%02x%02x%02x%02x%02x",
+            (unsigned char)tmp.ifr_hwaddr.sa_data[0],
+            (unsigned char)tmp.ifr_hwaddr.sa_data[1],
+            (unsigned char)tmp.ifr_hwaddr.sa_data[2],
+            (unsigned char)tmp.ifr_hwaddr.sa_data[3],
+            (unsigned char)tmp.ifr_hwaddr.sa_data[4],
+            (unsigned char)tmp.ifr_hwaddr.sa_data[5]
+            );
+//    printf("local mac:%s\n", mac_addr);
+    close(sockfd);
+    memcpy(mac,mac_addr,strlen(mac_addr));
+    return 0;
+}
+int getBarcode(char *barcode) {
+	if(get_mac(barcode)!=0) return 1;
+	timeval t;
+	char nowStr[42];
+	gettimeofday(&t, NULL);
+	sprintf(nowStr, "%lu%lu", t.tv_sec, t.tv_usec/100000);
+	strcat(barcode, nowStr);
+	return 0;
+}
 
 int main(int argv, char **args) {
 	int ret;
 	FILE *fin, *fout;
 
-	char code128Str[24] = "6219839849828abcdefgh";
-	unsigned int code128StrLen = sizeof("6219839849828abcdefgh")-1;
+	char code128Str[128] = "0";
+	unsigned int code128StrLen = sizeof("0")-1;
 	unsigned int dpiPage = 600, dpiBmp = 300;
 	unsigned int w = 370;
 	unsigned int h = 80;
@@ -48,8 +97,12 @@ int main(int argv, char **args) {
 //	fwrite(buf,1, fileLen, fout);
 //	fclose(fout);
 
+	getBarcode((char *)code128Str);
+	code128StrLen = strlen(code128Str);
+	printf("%s: %d\n", code128Str, code128StrLen);
+
 	ret = Barcode_Inject_Prn("/home/welkinm/basereport_2010_001.pcl", "/home/welkinm/barcode.prn",
-			BARCODE_TYPE_EAN13, code128Str, code128StrLen);
+			BARCODE_TYPE_CODE128, code128Str, code128StrLen);
 	if(ret!=0) {
 		printf("%s\n", "Barcode_Print_Fill_Buf err!");
 		return 1;

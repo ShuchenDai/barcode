@@ -564,6 +564,7 @@ int Code128_Parse(const char *barcode, int len, char* codeStr, int &codeStrLen, 
 						break;
 					}
 					case 'B': {
+						currentType = 'B';
 						//从C切成B类型，编码为100
 						str = CODE128_ENCODING[100].encoding;;
 						memcpy(&codeStr[codeStrLen], str, 6);
