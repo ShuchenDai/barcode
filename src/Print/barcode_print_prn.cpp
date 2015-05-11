@@ -96,7 +96,7 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	p += sizeof("\x1b*p0Y")-1;
 	memcpy(p, "\x1b*p-10000Y", sizeof("\x1b*p-10000Y")-1);	//Y position is top
 	p += sizeof("\x1b*p-10000Y")-1;
-	ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10);
+	ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/6);
 	memcpy(p, strTmp, ret);
 	p += ret;
 	//填充条码bmp到临时缓存中
@@ -131,12 +131,12 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	ret = sprintf(strTmp, "\x1b*r%dF", 3);		//Presentation
 	memcpy(p, strTmp, ret);
 	p += ret;
-	ret = sprintf(strTmp, "\x1b*r%dT", h);		//Height
-	memcpy(p, strTmp, ret);
-	p += ret;
-	ret = sprintf(strTmp, "\x1b*r%dS", w);		//Width
-	memcpy(p, strTmp, ret);
-	p += ret;
+//	ret = sprintf(strTmp, "\x1b*r%dT", h);		//Height
+//	memcpy(p, strTmp, ret);
+//	p += ret;
+//	ret = sprintf(strTmp, "\x1b*r%dS", w);		//Width
+//	memcpy(p, strTmp, ret);
+//	p += ret;
 	ret = sprintf(strTmp, "\x1b*r%dA", 1);		//Start Raster Graphics
 	memcpy(p, strTmp, ret);
 	p += ret;
@@ -170,10 +170,10 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	//移动光标到条码下面
 	switch(barcodeType) {
 	case BARCODE_TYPE_EAN13:
-		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*3/5));
+		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/6 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*3/5));
 		break;
 	default:
-		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/10 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage));
+		ret = sprintf(strTmp, "\x1b*p+%dY", dpiPage/6 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage));
 	}
 	memcpy(p, strTmp, ret);
 	p += ret;

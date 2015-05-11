@@ -74,6 +74,7 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
     	alreadyWrite = false;
     	//处理头，查找PRN文件类型
 		if(Barcode_Inject_Prn_Pkg_Is_Head(pData, dLen, printerCMDType)) {
+			printf("get head\n");
 			printerSubCMDType = PRINTER_SUBCMD_NULL;
 			isFoundSubCMDType = false;
 			isFoundDpiPage = false;
@@ -90,6 +91,7 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 			memcpy(interceptCmd+BARCODE_INJECT_PRN_RESERVED_CMD_LEN, pData, pkgLen);
 			//如果文件子类型为空，需先解析子文件类型
 			if(isFoundSubCMDType==false) {
+				printf("finding subCmdtype\n");
 				//对于PJL，解析文件的子类型
 				if(printerCMDType==PRINTER_CMD_PJL) {
 					//查找PRN文件子类型
@@ -308,7 +310,7 @@ bool Barcode_Inject_Prn_Pkg_Is_Head(unsigned char * buf, unsigned int len, int &
 		cmdType = PRINTER_CMD_PCL;
 		return true;
 	}
-	cmdType = PRINTER_CMD_NULL;
+//	cmdType = PRINTER_CMD_NULL;
 	return false;
 }
 

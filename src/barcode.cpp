@@ -101,7 +101,7 @@ int main(int argv, char **args) {
 	code128StrLen = strlen(code128Str);
 	printf("%s: %d\n", code128Str, code128StrLen);
 
-	ret = Barcode_Inject_Prn("/home/welkinm/basereport_2010_001.pcl", "/home/welkinm/barcode.prn",
+	ret = Barcode_Inject_Prn("/home/welkinm/FaJg3ivoC7FxqPsEW1419214903.prn", "/home/welkinm/127.prn",
 			BARCODE_TYPE_CODE128, code128Str, code128StrLen);
 	if(ret!=0) {
 		printf("%s\n", "Barcode_Print_Fill_Buf err!");
