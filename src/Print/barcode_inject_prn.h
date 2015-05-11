@@ -20,9 +20,22 @@ enum Printer_CMD_SubType_TypeDef {
 	PRINTER_SUBCMD_PCL5,
 	PRINTER_SUBCMD_PCLXL,
 };
+//PCLXL endian
+enum Printer_PCLXL_Endian_TypeDef {
+	PRINTER_PCLXL_ENDIAN_NULL = 0,
+	PRINTER_PCLXL_ENDIAN_LITTLE,
+	PRINTER_PCLXL_ENDIAN_BIG,
+};
+
 
 int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 		int barcodeType, const char *barcode, unsigned int barcodeLen);
+
+
+unsigned char Barcode_Inject_Prn_To_Upper_Case(unsigned char c);
+unsigned char Barcode_Inject_Prn_To_Lower_Case(unsigned char c);
+void BarCode_Inject_Prn_Mem_Write(unsigned char *pRaw, unsigned char *pData, int len, int endian);
+void BarCode_Inject_Prn_Mem_Read(unsigned char *pRaw, unsigned char *pData, int len, int endian);
 
 /*
  * 判断当前包是否为打印文件头

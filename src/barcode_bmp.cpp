@@ -424,16 +424,16 @@ void BarCode_BMP_Mem_Write_uShort(unsigned char **pRaw, unsigned short d) {
 
 void static BarCode_BMP_Mem_Write_uInt(unsigned char **pRaw, unsigned int d) {
 	unsigned char *p = *pRaw;
-	pRaw[0] = (d&0xff000000) >> 24;
-	pRaw[1] = (d&0x00ff0000) >> 16;
-	pRaw[2] = (d&0x0000ff00) >> 8;
-	pRaw[3] = (d&0x000000ff);
+	p[0] = (d&0xff000000) >> 24;
+	p[1] = (d&0x00ff0000) >> 16;
+	p[2] = (d&0x0000ff00) >> 8;
+	p[3] = (d&0x000000ff);
 	*pRaw += sizeof(unsigned int);
 }
 void static BarCode_BMP_Mem_Write_uShort(unsigned char **pRaw, unsigned short d) {
 	unsigned char *p = *pRaw;
-	pRaw[0] = (d&0xff00) >> 8;
-	pRaw[1] = (d&0xff);
+	p[0] = (d&0xff00) >> 8;
+	p[1] = (d&0xff);
 	*pRaw += sizeof(unsigned short);
 }
 

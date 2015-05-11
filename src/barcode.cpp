@@ -80,28 +80,34 @@ int main(int argv, char **args) {
 	int ret;
 	FILE *fin, *fout;
 
-	char code128Str[128] = "0";
-	unsigned int code128StrLen = sizeof("0")-1;
-	unsigned int dpiPage = 600, dpiBmp = 300;
+	char code128Str[128] = "012";
+	unsigned int code128StrLen = sizeof("012")-1;
+	unsigned int dpiPage = 600, dpiBmp = 600;
 	unsigned int w = 370;
 	unsigned int h = 80;
+	unsigned char *bmpBegin, *strBegin;
+	unsigned int bmpLen, strLen, bmpAndStrLen, fileLen;
 
-//	ret = Barcode_Print_Fill_Buf(code128Str, code128StrLen, buf, LEN, dpiPage, dpiBmp, w, h, &bmpBegin, bmpLen, &strBegin,  strLen, fileLen);
-//	if(ret!=0) {
-//		printf("%s\n", "Barcode_Print_Fill_Buf err!");
-//		return 1;
-//	}
+	getBarcode((char *)code128Str);
+	code128StrLen = strlen(code128Str);
+	ret = Barcode_Print_Prn_Fill_Buf_XL(code128Str, code128StrLen, BARCODE_TYPE_CODE128,
+			buf, LEN, dpiPage, dpiBmp, PRINTER_PCLXL_ENDIAN_LITTLE, w, h,
+			&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
+	if(ret!=0) {
+		printf("%s\n", "Barcode_Print_Prn_Fill_Buf_XL err!");
+		return 1;
+	}
 
-//	//输出单独的位图文件
-//	fout = fopen("/home/welkinm/bmp.prn", "w");
-//	fwrite(buf,1, fileLen, fout);
-//	fclose(fout);
+	//输出单独的位图文件
+	fout = fopen("/home/welkinm/pclxl.prn", "w");
+	fwrite(buf,1, fileLen, fout);
+	fclose(fout);
 
 	getBarcode((char *)code128Str);
 	code128StrLen = strlen(code128Str);
 	printf("%s: %d\n", code128Str, code128StrLen);
 
-	ret = Barcode_Inject_Prn("/home/welkinm/FaJg3ivoC7FxqPsEW1419214903.prn", "/home/welkinm/127.prn",
+	ret = Barcode_Inject_Prn("/home/welkinm/pcl6.prn", "/home/welkinm/pcl6_1.prn",
 			BARCODE_TYPE_CODE128, code128Str, code128StrLen);
 	if(ret!=0) {
 		printf("%s\n", "Barcode_Print_Fill_Buf err!");

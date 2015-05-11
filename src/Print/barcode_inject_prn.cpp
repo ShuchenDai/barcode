@@ -24,8 +24,6 @@
 
 #define BARCODE_INJECT_BMP_BUF_LEN 1024*100
 
-unsigned char Barcode_Inject_Prn_To_Upper_Case(unsigned char c);
-unsigned char Barcode_Inject_Prn_To_Lower_Case(unsigned char c);
 
 int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 		int barcodeType, const char *barcode, unsigned int barcodeLen) {
@@ -58,6 +56,11 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 	int printerSubCMDType = PRINTER_SUBCMD_NULL;
 	bool isFoundSubCMDType = false;
 	unsigned char interceptCmd[BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D];
+	//PCLXL相关
+	unsigned char beginStr[16];
+	unsigned char endStr[16];
+	int pclxlEndian = PRINTER_PCLXL_ENDIAN_LITTLE;
+	bool isFoundPclxlEndian = false;
 	//查找函数使用变量
     unsigned char temp[128];
     int retIdx = 0;
@@ -82,6 +85,9 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 			isFillBmp = false;
 			dpiPage = BARCODE_INJECT_PRN_DEFAULT_RESOLUTION;
 			dpiBmp = BARCODE_INJECT_PRN_DEFAULT_RESOLUTION;
+			//PCLXL相关
+			pclxlEndian = PRINTER_PCLXL_ENDIAN_LITTLE;
+			isFoundPclxlEndian = false;
 			memset(interceptCmd+BARCODE_INJECT_PRN_RESERVED_CMD_LEN, 0, BARCODE_INJECT_PRN_RESERVED_CMD_LEN);
 		}
 		//当还没有注入条码前，连续查找合适地方注入
@@ -91,7 +97,7 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 			memcpy(interceptCmd+BARCODE_INJECT_PRN_RESERVED_CMD_LEN, pData, pkgLen);
 			//如果文件子类型为空，需先解析子文件类型
 			if(isFoundSubCMDType==false) {
-				printf("finding subCmdtype\n");
+//				printf("finding subCmdtype\n");
 				//对于PJL，解析文件的子类型
 				if(printerCMDType==PRINTER_CMD_PJL) {
 					//查找PRN文件子类型
@@ -251,6 +257,64 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 								(const unsigned char *)"\x1b&a", sizeof("\x1b&a")-1, (const unsigned char *)"C", 1, retIdx, retLen, value);
 						if(ret==0) {
 //							printf("get Cursor Position Horizontal(Columns): idx:%d, len:%d value:%f\n", retIdx, retLen, value);
+							ret = Barcode_Print_Prn_Fill_Buf(barcode, barcodeLen, barcodeType, buf, BARCODE_INJECT_BMP_BUF_LEN, dpiPage, dpiBmp, w, h,
+									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
+							if(ret!=0) {
+								printf("%s\n", "Barcode_Print_Fill_Buf err!");
+								ret = 1;
+								break;
+							}
+							fwrite(pData, 1, retIdx+retLen, fout);
+							fwrite(bmpBegin, 1, bmpAndStrLen, fout);
+							fwrite(pData+retIdx+retLen, 1, dLen-retIdx-retLen, fout);
+							alreadyWrite = true;
+							isFillBmp = true;
+						}
+					}
+				} else if(printerSubCMDType == PRINTER_SUBCMD_PCLXL) { //对于PCL6文件处理
+					//查找文档 endian
+					if(isFoundPclxlEndian==false) {
+						ret = Barcode_Inject_Prn_Find_Str_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen,
+													(const unsigned char *)"\n", sizeof("\n")-1,
+													(const unsigned char *)" HP-PCL XL;", sizeof(" HP-PCL XL;")-1, retIdx, retLen, temp);
+						if(ret==0) {
+							isFoundPclxlEndian = true;
+							printf("Found Pclxl Endian %s \n", temp);
+							if(temp[0] == ')') {
+								pclxlEndian = PRINTER_PCLXL_ENDIAN_LITTLE;
+							} else if(temp[0] == '(') {
+								pclxlEndian = PRINTER_PCLXL_ENDIAN_BIG;
+							}
+						}
+					}
+					//查找文档 DPI（只取X作为全文档DPI）
+					if(isFoundDpiPage==false) {
+						beginStr[0] = 0xd1;
+						((unsigned short *)temp)[0] = 0x89f8;
+//						temp[0] = 0xf8;
+//						temp[1] = 0x89;
+						BarCode_Inject_Prn_Mem_Write(endStr, temp, 2, pclxlEndian);
+						ret = Barcode_Inject_Prn_Find_Str_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen,
+												(const unsigned char *)beginStr, 1,
+												(const unsigned char *)endStr, 2, retIdx, retLen, temp);
+						if(ret==0) {
+							isFoundDpiPage = true;
+							BarCode_Inject_Prn_Mem_Read(temp, (unsigned char *)&dpiPage, 2, pclxlEndian);
+							printf("FoundDpiPage %d \n", dpiPage);
+						}
+					}
+					//PCLXL在BeginSession之前一定要设置DPI
+					if(isFoundDpiPage && isFillBmp==false) {
+						((unsigned short *)temp)[0] = 0x28f8;
+//						temp[0] = 0xf8;
+//						temp[1] = 0x28;
+						BarCode_Inject_Prn_Mem_Write(beginStr, temp, 2, pclxlEndian);
+						endStr[0] = 0x43;//begin page
+						ret = Barcode_Inject_Prn_Find_Str_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen,
+																		(const unsigned char *)beginStr, 2,
+																		(const unsigned char *)endStr, 1, retIdx, retLen, temp);
+						if(ret==0) {
+							printf("found first begin page\n");
 							ret = Barcode_Print_Prn_Fill_Buf(barcode, barcodeLen, barcodeType, buf, BARCODE_INJECT_BMP_BUF_LEN, dpiPage, dpiBmp, w, h,
 									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
 							if(ret!=0) {
@@ -502,3 +566,56 @@ unsigned char Barcode_Inject_Prn_To_Lower_Case(unsigned char c){
 	}
 	return c;
 }
+
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+void BarCode_Inject_Prn_Mem_Write(unsigned char *pRaw, unsigned char *pData, int len, int endian) {
+	if(endian==PRINTER_PCLXL_ENDIAN_LITTLE) {
+		for(int i=0; i<len; i++) {
+			pRaw[i] = pData[i];
+		}
+	} else {
+		for(int i=0; i<len; i++) {
+			pRaw[i] = pData[len-i-1];
+		}
+	}
+}
+void BarCode_Inject_Prn_Mem_Read(unsigned char *pRaw, unsigned char *pData, int len, int endian) {
+	if(endian==PRINTER_PCLXL_ENDIAN_LITTLE) {
+		for(int i=0; i<len; i++) {
+			pData[i] = pRaw[i];
+		}
+	} else {
+		for(int i=0; i<len; i++) {
+			pData[i] = pRaw[len-i-1];
+		}
+	}
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+
+void BarCode_Inject_Prn_Mem_Write(unsigned char *pRaw, unsigned char *pData, int len, int endian) {
+	if(endian==PRINTER_PCLXL_ENDIAN_BIG) {
+		for(int i=0; i<len; i++) {
+			pRaw[i] = pData[i];
+		}
+	} else {
+		for(int i=0; i<len; i++) {
+			pRaw[i] = pData[len-i-1];
+		}
+	}
+}
+void BarCode_Inject_Prn_Mem_Read(unsigned char *pRaw, unsigned char *pData, int len, int endian) {
+	if(endian==PRINTER_PCLXL_ENDIAN_BIG) {
+		for(int i=0; i<len; i++) {
+			pData[i] = pRaw[i];
+		}
+	} else {
+		for(int i=0; i<len; i++) {
+			pData[i] = pRaw[len-i-1];
+		}
+	}
+}
+
+#endif
+
+
