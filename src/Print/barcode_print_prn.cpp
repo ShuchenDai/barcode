@@ -187,6 +187,8 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 //	memcpy(p, BARCODE_PRINT_DEFAULT_FONT, BARCODE_PRINT_DEFAULT_FONT_LEN);
 //	p += BARCODE_PRINT_DEFAULT_FONT_LEN;
 
+	//返回打印文字的开始位置
+	*strBegin = p;
 	//开始填充文字
 	switch(barcodeType) {
 	case BARCODE_TYPE_EAN13:
@@ -208,16 +210,13 @@ int Barcode_Print_Prn_Fill_Buf(const char *barcode, unsigned int barcodeLen, int
 	default:
 		*p = ' ';
 		p++;
-		//返回打印文字的开始位置
-		*strBegin = p;
 		for(unsigned int i = 0; i<barcodeLen; i++) {
 			*p = barcode[i];
 			p++;
 		}
-		//str长度
-		fileLen = p - *strBegin;
 	}
-
+	//str长度
+	strLen = p - *strBegin;
 
 	//填充出栈原位置光标打印指令
 	memcpy(p, "\x1b&f1S", sizeof("\x1b&f1S")-1);	//POP Position
@@ -480,6 +479,126 @@ int Barcode_Print_Prn_Fill_Buf_XL(const char *barcode, unsigned int barcodeLen, 
 
 	//bmp长度
 	bmpLen = p - *bmpBegin;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//文字
+	//PushGS
+	++*p = 0x61;
+
+	//SetBrushSource
+	//RGBColor
+	*p = 0xc8; p++;				//ubyte_array
+	*p = 0xc1; p++;				//uint16
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x03, endian);	//3
+	*p = 0x00; p++;				//R
+	*p = 0x00; p++;				//G
+	*p = 0x00; p++;				//B
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x0bf8, endian);	//RGBColor
+	//SetBrushSource
+	*p = 0x63; p++;
+
+	//SetPenSource
+	//RGBColor
+	*p = 0xc8; p++;				//ubyte_array
+	*p = 0xc1; p++;				//uint16
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x03, endian);	//3
+	*p = 0x00; p++;				//R
+	*p = 0x00; p++;				//G
+	*p = 0x00; p++;				//B
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x0bf8, endian);	//RGBColor
+	//SetPenSource
+	*p = 0x79; p++;
+
+	//SetCursor
+	//Point
+	*p = 0xd3; p++;				//sint16_xy
+	switch(barcodeType) {
+		case BARCODE_TYPE_EAN13:
+			BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(dpiPage/6), endian);			//x
+			BarCode_Print_Prn_Mem_Write_uShort(&p,
+					(unsigned short)(dpiPage/6 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*0.55)), endian);			//y
+			break;
+
+		default:
+			BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(dpiPage/6), endian);			//x
+			BarCode_Print_Prn_Mem_Write_uShort(&p,
+					(unsigned short)(dpiPage/6 + (dpiPage*h/dpiBmp)+(int)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*0.95)), endian);			//y
+	}
+
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x4cf8, endian);	//Point
+	//SetCursor
+	*p = 0x6b; p++;
+
+	//SetFont
+	unsigned char fontName[] = "Courier         ";
+	//FontName
+	*p = 0xc8; p++;				//ubyte_array
+	*p = 0xc1; p++;				//uint16
+	BarCode_Print_Prn_Mem_Write_uShort(&p, 16, endian);	//length
+	for(i=0; i<(int)(sizeof(fontName)-1); i++) {
+		*p = fontName[i]; p++;
+	}
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0xa8f8, endian);	//FontName
+	//CharSize
+	*p = 0xc1; p++;				//uint16
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*1.2), endian);
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0xa6f8, endian);	//CharSize
+	//SymbolSet
+	*p = 0xc1; p++;				//uint16
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(0x15), endian);	//ISO 6: ASCII
+	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0xaaf8, endian);	//SymbolSet
+	//SetFont
+	*p = 0x6f; p++;
+
+	//返回打印文字的开始位置
+	*strBegin = p;
+	//开始填充文字
+	switch(barcodeType) {
+	case BARCODE_TYPE_EAN13:
+//		*p = barcode[0];
+//		p++;
+//		*p = ' ';
+//		p++;
+//		for(unsigned int i = 1; i<7; i++) {
+//			*p = barcode[i];
+//			p++;
+//		}
+//		*p = ' ';
+//		p++;
+//		for(unsigned int i = 7; i<13; i++) {
+//			*p = barcode[i];
+//			p++;
+//		}
+		break;
+	default:
+		//TextData
+		*p = 0xc8; p++;				//ubyte_array
+		*p = 0xc1; p++;				//uint16
+		BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(barcodeLen+1), endian);	//length
+		*p = ' '; p++;
+		for(unsigned int i = 0; i<barcodeLen; i++) {
+			*p = barcode[i]; p++;
+		}
+		strLen = p - *strBegin;
+		BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0xabf8, endian);	//TextData
+		//XSpacingData
+		unsigned char charSpacing = BARCODE_PRINT_FONT_H*BARCODE_PRINT_POINT_SIZE*dpiPage*0.8;
+		*p = 0xc8; p++;				//ubyte_array
+		*p = 0xc1; p++;				//uint16
+		BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)(barcodeLen+1), endian);	//length
+		*p = charSpacing*1.5; p++;
+		for(unsigned int i = 0; i<barcodeLen; i++) {
+			*p = charSpacing; p++;
+		}
+		BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0xaff8, endian);	//XSpacingData
+	}
+
+
+	//Text
+	*p = 0xa8; p++;
+
+	//PopGS
+	*p = 0x60; p++;
 
 	//PageCopies
 	*p = 0xc1; p++;				//uint16
