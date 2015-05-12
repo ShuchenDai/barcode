@@ -63,7 +63,9 @@ int get_mac(char* mac)
             );
 //    printf("local mac:%s\n", mac_addr);
     close(sockfd);
-    memcpy(mac,mac_addr,strlen(mac_addr));
+    int macLen = strlen(mac_addr);
+    memcpy(mac,mac_addr, macLen);
+    mac[macLen-1] = 0;
     return 0;
 }
 int getBarcode(char *barcode) {
@@ -72,6 +74,7 @@ int getBarcode(char *barcode) {
 	char nowStr[42];
 	gettimeofday(&t, NULL);
 	sprintf(nowStr, "%lu%lu", t.tv_sec, t.tv_usec/100000);
+//	printf("nowStr: %s\n", nowStr);
 	strcat(barcode, nowStr);
 	return 0;
 }
@@ -88,6 +91,7 @@ int main(int argv, char **args) {
 	unsigned char *bmpBegin, *strBegin;
 	unsigned int bmpLen, strLen, bmpAndStrLen, fileLen;
 
+//	memset(code128Str, 0, 128);
 	getBarcode((char *)code128Str);
 	code128StrLen = strlen(code128Str);
 	ret = Barcode_Print_Prn_Fill_Buf_XL(code128Str, code128StrLen, BARCODE_TYPE_CODE128,
@@ -105,7 +109,7 @@ int main(int argv, char **args) {
 
 	getBarcode((char *)code128Str);
 	code128StrLen = strlen(code128Str);
-	printf("%s: %d\n", code128Str, code128StrLen);
+	printf("barcode : %s: %d\n", code128Str, code128StrLen);
 
 	ret = Barcode_Inject_Prn("/home/welkinm/pcl6.prn", "/home/welkinm/pcl6_1.prn",
 			BARCODE_TYPE_CODE128, code128Str, code128StrLen);

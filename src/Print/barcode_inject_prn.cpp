@@ -294,12 +294,13 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 //						temp[0] = 0xf8;
 //						temp[1] = 0x89;
 						BarCode_Inject_Prn_Mem_Write(endStr, temp, 2, pclxlEndian);
-						ret = Barcode_Inject_Prn_Find_Str_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen,
+						ret = Barcode_Inject_Prn_Find_Bin_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen, 32,
 												(const unsigned char *)beginStr, 1,
 												(const unsigned char *)endStr, 2, retIdx, retLen, temp);
 						if(ret==0) {
 							isFoundDpiPage = true;
 							BarCode_Inject_Prn_Mem_Read(temp, (unsigned char *)&dpiPage, 2, pclxlEndian);
+							dpiBmp = dpiPage;
 							printf("FoundDpiPage %d \n", dpiPage);
 						}
 					}
@@ -310,12 +311,12 @@ int Barcode_Inject_Prn(const char * prnIn, const char *prnOut,
 //						temp[1] = 0x28;
 						BarCode_Inject_Prn_Mem_Write(beginStr, temp, 2, pclxlEndian);
 						endStr[0] = 0x43;//begin page
-						ret = Barcode_Inject_Prn_Find_Str_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen,
+						ret = Barcode_Inject_Prn_Find_Bin_Paramete(interceptCmd, BARCODE_INJECT_PRN_RESERVED_CMD_LEN_D, pData, dLen, 32,
 																		(const unsigned char *)beginStr, 2,
 																		(const unsigned char *)endStr, 1, retIdx, retLen, temp);
 						if(ret==0) {
 							printf("found first begin page\n");
-							ret = Barcode_Print_Prn_Fill_Buf(barcode, barcodeLen, barcodeType, buf, BARCODE_INJECT_BMP_BUF_LEN, dpiPage, dpiBmp, w, h,
+							ret = Barcode_Print_Prn_Fill_Buf_XL(barcode, barcodeLen, barcodeType, buf, BARCODE_INJECT_BMP_BUF_LEN, dpiPage, dpiBmp, pclxlEndian, w, h,
 									&bmpBegin, bmpLen, &strBegin,  strLen, bmpAndStrLen, fileLen);
 							if(ret!=0) {
 								printf("%s\n", "Barcode_Print_Fill_Buf err!");
@@ -548,6 +549,90 @@ int Barcode_Inject_Prn_Find_Cmd_Paramete(const unsigned char* cache,unsigned int
 		}
 	} else {
 		ret = Barcode_Inject_Prn_Find_Cmd_Paramete(data, dLen, bStr, bStrLen, eStr, eStrLen, retIdx, retLen, retValue);
+	}
+	return ret;
+}
+
+int Barcode_Inject_Prn_Find_Bin(const unsigned char* data,unsigned int dLen, unsigned int maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx,unsigned  int &retLen) {
+	unsigned int d = 0;	//原串索引
+	unsigned int b = 0;	//开始串索引
+	unsigned int e = 0;	//结束串索引
+	unsigned int max = 0;
+	retIdx = -1;
+	retLen = -1;
+
+	for(d=0; d<=dLen; d++) {
+		if(b<bStrLen) {
+			max = 0;
+			//还未查找完头
+			if(data[d]==bStr[b]) {
+				if(retIdx==-1) {
+					retIdx = d;
+				}
+				b++;
+			} else {
+				b = 0;
+				e = 0;
+				retIdx = -1;
+			}
+		} else {
+			//找到头，接下来找尾，中间允许
+			if(e == eStrLen)
+				break;
+			else if(data[d]==eStr[e]) {
+				e++;
+			} else {
+				max += e+1;
+				if(e!=0){
+					e = 0;
+				}
+				if(max>maxMidLen) {
+					b = 0;
+					e = 0;
+				}
+			}
+		}
+	}
+	if(b==bStrLen && e==eStrLen) {
+		retLen = d - retIdx;
+	} else {
+		retIdx = -1;
+		retLen = 0;
+	}
+	return 0;
+}
+
+int Barcode_Inject_Prn_Find_Bin_Paramete(const unsigned char* data,unsigned int dLen, unsigned int maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx, unsigned int &retLen, unsigned char *retStr) {
+	Barcode_Inject_Prn_Find_Bin(data, dLen, maxMidLen, bStr,bStrLen, eStr, eStrLen, retIdx, retLen);
+	if(retIdx<0) return -1;
+	int retIdxNew = retIdx + bStrLen;
+	unsigned int retLenNew = retLen - bStrLen - eStrLen;
+	memcpy(retStr, data+retIdxNew, retLenNew);
+	return 0;
+}
+
+//当要查找的字符串头出现在cache中时，retIdx为负数
+int Barcode_Inject_Prn_Find_Bin_Paramete(const unsigned char* cache,unsigned int cLen,
+		const unsigned char* data,unsigned int dLen, unsigned maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx, unsigned  int &retLen, unsigned char *retStr) {
+	int ret = Barcode_Inject_Prn_Find_Bin_Paramete(cache, cLen, maxMidLen, bStr, bStrLen, eStr, eStrLen, retIdx, retLen, retStr);
+	if(ret==0) {
+		if(retIdx>=(int)cLen/2) {
+			retIdx = retIdx-cLen/2;
+		} else {
+			retLen -= cLen/2-retIdx;
+			retIdx = 0;
+		}
+	} else {
+		ret = Barcode_Inject_Prn_Find_Bin_Paramete(data, dLen, maxMidLen, bStr, bStrLen, eStr, eStrLen, retIdx, retLen, retStr);
 	}
 	return ret;
 }

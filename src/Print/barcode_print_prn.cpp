@@ -629,6 +629,8 @@ int Barcode_Print_Prn_Fill_Buf_XL(const char *barcode, unsigned int barcodeLen, 
 	//PopGS
 	*p = 0x60; p++;
 
+	bmpAndStrLen = p - *bmpBegin;
+
 	//PageCopies
 	*p = 0xc1; p++;				//uint16
 	BarCode_Print_Prn_Mem_Write_uShort(&p, (unsigned short)0x0100, endian);	//1

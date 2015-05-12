@@ -54,6 +54,7 @@ int Barcode_Inject_Prn_Find_Str_Paramete(const unsigned char* cache,unsigned int
 		const unsigned char *bStr,unsigned  int bStrLen,
 		const unsigned char *eStr,unsigned  int eStrLen,
 		int &retIdx, unsigned  int &retLen, unsigned char *retStr);
+
 int Barcode_Inject_Prn_Find_Cmd(const unsigned char* data,unsigned int dLen,
 		const unsigned char *bStr,unsigned  int bStrLen,
 		const unsigned char *eStr,unsigned  int eStrLen,
@@ -68,6 +69,18 @@ int Barcode_Inject_Prn_Find_Cmd_Paramete(const unsigned char* cache,unsigned int
 		const unsigned char *eStr,unsigned  int eStrLen,
 		int &retIdx, unsigned  int &retLen, double &retValue);
 
-
+int Barcode_Inject_Prn_Find_Bin(const unsigned char* data,unsigned int dLen, unsigned int maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx,unsigned  int &retLen);
+int Barcode_Inject_Prn_Find_Bin_Paramete(const unsigned char* data,unsigned int dLen, unsigned int maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx, unsigned int &retLen, unsigned char *retStr);
+int Barcode_Inject_Prn_Find_Bin_Paramete(const unsigned char* cache,unsigned int cLen,
+		const unsigned char* data,unsigned int dLen, unsigned int maxMidLen,
+		const unsigned char *bStr,unsigned  int bStrLen,
+		const unsigned char *eStr,unsigned  int eStrLen,
+		int &retIdx, unsigned  int &retLen, unsigned char *retStr);
 
 #endif /* PRINT_BARCODE_INJECT_PRN_H_ */
