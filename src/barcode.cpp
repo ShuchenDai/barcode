@@ -80,8 +80,8 @@ int main(int argv, char **args) {
 	int ret;
 	FILE *fin, *fout;
 
-	char code128Str[128] = "012";
-	unsigned int code128StrLen = sizeof("012")-1;
+	char code128Str[128] = "69139876487923";
+	unsigned int code128StrLen = sizeof("69139876487923")-1;
 	unsigned int dpiPage = 600, dpiBmp = 600;
 	unsigned int w = 370;
 	unsigned int h = 80;
