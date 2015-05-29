@@ -1,0 +1,5 @@
+set(usb-prn-barcode usb-prn-barcode)
+set(barcode_cpp barcode.cpp barcode_bmp.cpp Code128/Code128_fill.cpp EAN13/EAN13_fill.cpp Print/barcode_print_prn.cpp Print/barcode_inject_prn.cpp)
+set_source_files_properties(${barcode_cpp} PROPERTIES COMPILE_FLAGS  "-std=c++11 -pthread -Wall")
+add_executable(${usb-prn-barcode} ${barcode_cpp})
+install(TARGETS ${usb-prn-barcode} RUNTIME DESTINATION ${INSTALL_DEFAULT_BINDIR})
