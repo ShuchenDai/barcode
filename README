@@ -1,1 +1,25 @@
 Generator barcode, it is just support EAN13, Code128 now!
+
+Install:
+cd barcode_dev
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+
+
+
+Usage: usb-prn-barcode -c barcode -o outputFile [OPTIONS]
+	-c <barcode> A barcode string
+	-o <file> A output file name
+Options:
+	-t <type> The type of barcode, default is Code128
+	-i <dpi> The dpi of bitmap, default is 600
+Type:
+	Code128 EAN13
+
+
+
+Example:
+usb-prn-barcode -c ef3c23e1e09312987685291 -o ~/barcode.bmp
